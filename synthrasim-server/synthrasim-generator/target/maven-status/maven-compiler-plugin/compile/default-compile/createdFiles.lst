@@ -1,8 +1,0 @@
-com/synthrasim/generator/mapper/GenTableMapper.class
-com/synthrasim/generator/util/VelocityUtils.class
-com/synthrasim/generator/controller/GenController.class
-com/synthrasim/generator/util/GenUtils.class
-com/synthrasim/generator/domain/GenTableColumn.class
-com/synthrasim/generator/mapper/GenTableColumnMapper.class
-com/synthrasim/generator/service/GenTableServiceImpl.class
-com/synthrasim/generator/domain/GenTable.class

@@ -1,7 +1,0 @@
-com/synthrasim/web/controller/system/SysUserController.class
-com/synthrasim/web/controller/common/CaptchaController.class
-com/synthrasim/SynthraSimApplication.class
-com/synthrasim/web/controller/system/SysLoginController.class
-com/synthrasim/web/controller/system/SysLoginLogController.class
-com/synthrasim/web/controller/system/SysProfileController.class
-com/synthrasim/web/controller/system/SysRoleController.class

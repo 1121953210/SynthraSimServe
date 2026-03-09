@@ -1,8 +1,0 @@
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/service/GenTableServiceImpl.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/controller/GenController.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/domain/GenTable.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/domain/GenTableColumn.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/mapper/GenTableColumnMapper.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/mapper/GenTableMapper.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/util/GenUtils.java
-/workspace/synthrasim-server/synthrasim-generator/src/main/java/com/synthrasim/generator/util/VelocityUtils.java
