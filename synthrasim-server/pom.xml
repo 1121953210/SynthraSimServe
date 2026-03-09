@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ==================== 项目基本信息 ==================== -->
+    <groupId>com.synthrasim</groupId>
+    <artifactId>synthrasim-server</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>SynthraSim Server</name>
+    <description>工业仿真平台后端服务 - 基于Spring Boot + MyBatis Plus</description>
+
+    <!-- ==================== 子模块声明 ==================== -->
+    <modules>
+        <module>synthrasim-common</module>   <!-- 公共模块：工具类、常量、异常处理 -->
+        <module>synthrasim-system</module>   <!-- 系统模块：用户、角色、组织等核心业务 -->
+        <module>synthrasim-framework</module><!-- 框架模块：安全认证、拦截器、全局配置 -->
+        <module>synthrasim-generator</module><!-- 代码生成模块：自动生成CRUD代码 -->
+        <module>synthrasim-admin</module>    <!-- 启动模块：Controller入口、Application -->
+    </modules>
+
+    <!-- ==================== 版本号统一管理 ==================== -->
+    <properties>
+        <synthrasim.version>1.0.0</synthrasim.version>
+        <java.version>11</java.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Spring Boot -->
+        <spring-boot.version>2.7.17</spring-boot.version>
+
+        <!-- MyBatis Plus：增强版MyBatis，简化CRUD操作 -->
+        <mybatis-plus.version>3.5.4.1</mybatis-plus.version>
+
+        <!-- 数据库连接池 -->
+        <druid.version>1.2.20</druid.version>
+
+        <!-- JWT：JSON Web Token，用于无状态身份认证 -->
+        <jjwt.version>0.9.1</jjwt.version>
+
+        <!-- 工具库 -->
+        <fastjson2.version>2.0.42</fastjson2.version>
+        <hutool.version>5.8.22</hutool.version>
+        <commons-lang3.version>3.12.0</commons-lang3.version>
+        <commons-io.version>2.13.0</commons-io.version>
+
+        <!-- 接口文档 -->
+        <knife4j.version>4.3.0</knife4j.version>
+
+        <!-- 验证码 -->
+        <kaptcha.version>2.3.3</kaptcha.version>
+
+        <!-- Apache Velocity：代码生成模板引擎 -->
+        <velocity.version>2.3</velocity.version>
+    </properties>
+
+    <!-- ==================== 依赖版本统一管理（子模块按需引入） ==================== -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot 依赖管理BOM，统一管理所有Spring Boot相关依赖版本 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ===== 项目内部模块依赖 ===== -->
+            <dependency>
+                <groupId>com.synthrasim</groupId>
+                <artifactId>synthrasim-common</artifactId>
+                <version>${synthrasim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.synthrasim</groupId>
+                <artifactId>synthrasim-system</artifactId>
+                <version>${synthrasim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.synthrasim</groupId>
+                <artifactId>synthrasim-framework</artifactId>
+                <version>${synthrasim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.synthrasim</groupId>
+                <artifactId>synthrasim-generator</artifactId>
+                <version>${synthrasim.version}</version>
+            </dependency>
+
+            <!-- ===== 持久层 ===== -->
+            <!-- MyBatis Plus：MyBatis增强工具，内置通用CRUD、分页插件、代码生成器等 -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <!-- Druid数据库连接池：阿里开源，自带监控和防SQL注入功能 -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid-spring-boot-starter</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+
+            <!-- ===== 安全认证 ===== -->
+            <!-- JJWT：JWT令牌的生成与解析库 -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- ===== 工具库 ===== -->
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+
+            <!-- ===== 接口文档 ===== -->
+            <!-- Knife4j：Swagger增强UI，提供更友好的API文档界面 -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi2-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
+            </dependency>
+
+            <!-- ===== 验证码 ===== -->
+            <dependency>
+                <groupId>pro.fessional</groupId>
+                <artifactId>kaptcha</artifactId>
+                <version>${kaptcha.version}</version>
+            </dependency>
+
+            <!-- ===== 代码生成模板引擎 ===== -->
+            <dependency>
+                <groupId>org.apache.velocity</groupId>
+                <artifactId>velocity-engine-core</artifactId>
+                <version>${velocity.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <!-- 编译插件：指定Java版本，配置Lombok注解处理器 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.30</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

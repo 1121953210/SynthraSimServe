@@ -1,0 +1,99 @@
+# ============================================================
+# SynthraSim 工业仿真平台 - 主配置文件
+# ============================================================
+
+server:
+  # 服务端口
+  port: 8080
+  servlet:
+    # 应用上下文路径（API统一前缀，可选）
+    context-path: /
+
+# ==================== Spring配置 ====================
+spring:
+  application:
+    name: synthrasim-server
+
+  # ----- 数据源配置 -----
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:8086/synthrasim_server?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: root
+    password: PSX18322002993
+    # Druid连接池配置
+    druid:
+      initial-size: 5          # 初始化连接数
+      min-idle: 5              # 最小空闲连接数
+      max-active: 20           # 最大活跃连接数
+      max-wait: 60000          # 获取连接最大等待时间(ms)
+      time-between-eviction-runs-millis: 60000  # 空闲连接检测间隔
+      min-evictable-idle-time-millis: 300000    # 连接最小空闲时间
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      # Druid监控页面配置
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: admin123
+
+  # ----- Redis配置 -----
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    password:
+    database: 0
+    timeout: 10000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-wait: -1ms
+        max-idle: 10
+        min-idle: 0
+
+  # ----- Jackson序列化配置 -----
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+  # ----- 文件上传限制 -----
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+# ==================== MyBatis Plus配置 ====================
+mybatis-plus:
+  # Mapper XML文件位置（扫描所有模块的mapper目录）
+  mapper-locations: classpath*:mapper/**/*Mapper.xml
+  # 实体类包路径（自动映射）
+  type-aliases-package: com.synthrasim.system.domain
+  configuration:
+    # 开启驼峰命名自动映射（数据库下划线 → Java驼峰）
+    map-underscore-to-camel-case: true
+    # 日志输出SQL语句（开发环境调试用，生产环境建议关闭）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      # 逻辑删除字段配置
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ==================== Token配置 ====================
+token:
+  # JWT签名密钥（生产环境务必修改为复杂随机字符串）
+  secret: synthrasimSecretKey2026ForIndustrialSimulation
+  # Token有效期（分钟），默认720分钟=12小时
+  expireTime: 720
+
+# ==================== 日志配置 ====================
+logging:
+  level:
+    com.synthrasim: debug
+    org.springframework: warn

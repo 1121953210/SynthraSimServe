@@ -1,0 +1,14 @@
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/service/SysRegisterService.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/filter/JwtAuthenticationFilter.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/config/KaptchaConfig.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/service/UserDetailsServiceImpl.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/handle/LogoutSuccessHandlerImpl.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/aspectj/PermissionAspect.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/config/RedisConfig.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/config/Knife4jConfig.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/config/MybatisPlusConfig.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/config/SecurityConfig.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/handle/AuthenticationEntryPointImpl.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/service/SysLoginService.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/service/TokenService.java
+/workspace/synthrasim-server/synthrasim-framework/src/main/java/com/synthrasim/framework/security/service/LoginUser.java

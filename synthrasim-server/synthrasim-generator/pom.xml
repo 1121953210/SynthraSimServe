@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.synthrasim</groupId>
+        <artifactId>synthrasim-server</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>synthrasim-generator</artifactId>
+    <description>代码生成模块 - 读取数据库表结构自动生成Entity/Mapper/Service/Controller代码</description>
+
+    <dependencies>
+        <!-- 依赖框架模块（间接依赖system和common） -->
+        <dependency>
+            <groupId>com.synthrasim</groupId>
+            <artifactId>synthrasim-framework</artifactId>
+        </dependency>
+
+        <!-- Velocity模板引擎：用于代码生成时渲染模板文件 -->
+        <dependency>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity-engine-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
