@@ -85,9 +85,10 @@ public class SecurityConfig {
             .authorizeRequests()
                 // ===== 以下接口无需认证（白名单） =====
                 .antMatchers("/login", "/register", "/captchaImage").permitAll()
-                // Swagger/Knife4j接口文档
-                .antMatchers("/swagger-ui/**", "/swagger-resources/**", "/v2/**", "/v3/**",
-                             "/doc.html", "/webjars/**", "/favicon.ico").permitAll()
+                // Swagger/Knife4j接口文档（必须放行所有相关静态资源和API描述接口）
+                .antMatchers("/doc.html", "/swagger-ui/**", "/swagger-ui.html",
+                             "/swagger-resources/**", "/v2/api-docs/**", "/v3/api-docs/**",
+                             "/webjars/**", "/favicon.ico", "/error").permitAll()
                 // Druid监控页面
                 .antMatchers("/druid/**").permitAll()
                 // 静态资源

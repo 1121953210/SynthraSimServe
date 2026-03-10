@@ -14,6 +14,13 @@ spring:
   application:
     name: synthrasim-server
 
+  # ----- MVC路径匹配策略 -----
+  # Spring Boot 2.6+ 默认使用 PathPatternParser，但 Springfox/Knife4j 依赖 AntPathMatcher
+  # 不加此配置会导致 Knife4j 文档页面请求异常
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
   # ----- 数据源配置 -----
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
