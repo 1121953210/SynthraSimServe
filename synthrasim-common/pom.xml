@@ -83,7 +83,7 @@
         <!-- Knife4j接口文档注解 -->
         <dependency>
             <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-openapi2-spring-boot-starter</artifactId>
+            <artifactId>knife4j-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- 验证码 -->

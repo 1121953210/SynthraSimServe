@@ -92,6 +92,13 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+# ==================== Knife4j接口文档配置 ====================
+knife4j:
+  # 启用Knife4j增强功能
+  enable: true
+  # 开启生产环境时可设为true屏蔽文档
+  production: false
+
 # ==================== Token配置 ====================
 token:
   # JWT签名密钥（生产环境务必修改为复杂随机字符串）

@@ -48,8 +48,8 @@
         <commons-lang3.version>3.12.0</commons-lang3.version>
         <commons-io.version>2.13.0</commons-io.version>
 
-        <!-- 接口文档 -->
-        <knife4j.version>4.3.0</knife4j.version>
+        <!-- 接口文档：3.0.3是与Spring Boot 2.7兼容性最好的版本 -->
+        <knife4j.version>3.0.3</knife4j.version>
 
         <!-- 验证码 -->
         <kaptcha.version>2.3.3</kaptcha.version>
@@ -135,7 +135,7 @@
             <!-- Knife4j：Swagger增强UI，提供更友好的API文档界面 -->
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-openapi2-spring-boot-starter</artifactId>
+                <artifactId>knife4j-spring-boot-starter</artifactId>
                 <version>${knife4j.version}</version>
             </dependency>
 
