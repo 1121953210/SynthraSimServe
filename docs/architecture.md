@@ -41,12 +41,6 @@
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │    │
 │  │  │ Domain层  │  │ Mapper层 │  │ Service层         │  │    │
 │  │  │ (实体类)  │  │ (数据访问)│  │ (业务逻辑)        │  │    │
-│  │  │          │  │          │  │                  │  │    │
-│  │  │ SysUser  │  │ SysUser  │  │ ISysUserService  │  │    │
-│  │  │ SysRole  │  │  Mapper  │  │ ISysRoleService  │  │    │
-│  │  │ SysOrg   │  │ SysRole  │  │ ISysLoginLog     │  │    │
-│  │  │ SysLogin │  │  Mapper  │  │  Service         │  │    │
-│  │  │  Log     │  │  ...     │  │                  │  │    │
 │  │  └──────────┘  └──────────┘  └──────────────────┘  │    │
 │  └─────────────────────────┬───────────────────────────┘    │
 │                            │                                │
@@ -190,54 +184,19 @@ List<SysRole> selectRolesByUserId(Long userId);
 #### 3.3.1 认证流程（JWT + Redis）
 
 ```
-【用户登录】
-  ┌──────────┐    POST /login       ┌───────────────┐
-  │  前端     │ ──────────────────→  │ SysLoginService│
-  │          │    username/password  │               │
-  │          │                      │  ①验证码校验    │
-  │          │                      │  ②调用Security │
-  │          │                      │   认证管理器    │
-  │          │                      └───────┬───────┘
-  │          │                              │
-  │          │                              ▼
-  │          │                      ┌───────────────┐
-  │          │                      │UserDetailsSvc │
-  │          │                      │               │
-  │          │                      │ ③查询数据库    │
-  │          │                      │ ④校验用户状态  │
-  │          │                      │ ⑤加载角色权限  │
-  │          │                      └───────┬───────┘
-  │          │                              │ 认证成功
-  │          │                              ▼
-  │          │                      ┌───────────────┐
-  │          │                      │ TokenService   │
-  │          │                      │               │
-  │          │    ← token ─────── │ ⑥生成UUID      │
-  │          │                      │ ⑦存Redis      │
-  │          │                      │ ⑧生成JWT返回   │
-  └──────────┘                      └───────────────┘
+【登录】POST /login
+  ①验证码校验 → ②Spring Security认证（查用户→校状态→加载权限→比对密码）
+  → ③记录登录日志(sys_login_log, operationType=1)
+  → ④生成Token(UUID存Redis + JWT返回前端)
 
-【后续请求认证】
-  ┌──────────┐  Header: Bearer xxx  ┌───────────────┐
-  │  前端     │ ──────────────────→  │JwtAuthFilter  │
-  │          │                      │               │
-  │          │                      │ ①提取JWT      │
-  │          │                      │ ②解析出UUID   │
-  │          │                      │ ③Redis取用户   │
-  │          │                      │ ④检查有效期    │
-  │          │                      │ ⑤放入Security  │
-  │          │                      │  Context      │
-  │          │                      └───────┬───────┘
-  │          │                              │
-  │          │                              ▼
-  │          │                      ┌───────────────┐
-  │          │  ← JSON响应 ──────  │ Controller     │
-  └──────────┘                      └───────────────┘
+【登出】POST /logout
+  ①记录注销日志(sys_login_log, operationType=2) → ②删除Redis缓存 → ③返回成功
+
+【后续请求】
+  JwtAuthenticationFilter → 提取JWT → 解析UUID → Redis取LoginUser → 放入SecurityContext
 ```
 
-#### 3.3.2 Security配置（SecurityConfig.java）
-
-**白名单接口（无需Token即可访问）：**
+#### 3.3.2 Security白名单
 
 | 路径 | 说明 |
 |------|------|
@@ -247,21 +206,16 @@ List<SysRole> selectRolesByUserId(Long userId);
 | `/doc.html`、`/swagger-*`、`/v2/**`、`/webjars/**` | Knife4j接口文档 |
 | `/druid/**` | Druid数据库监控 |
 
-**其他所有接口 → 必须携带有效Token。**
+**其他所有接口 → 必须在Header中携带 `Authorization: Bearer {token}`。**
 
-#### 3.3.3 权限校验（PermissionAspect.java）
+#### 3.3.3 权限校验注解
 
-在Controller方法上标注注解即可控制权限：
 ```java
-@RequiresPermissions("system:user:list")           // 需要用户列表权限
-@RequiresPermissions("system:user:add")             // 需要用户新增权限
-@RequiresPermissions(value = {"a", "b"}, logical = Logical.OR)  // 满足任一权限即可
+@RequiresPermissions("system:user:list")                                                // 需要单个权限
+@RequiresPermissions(value = {"system:user:add", "system:user:edit"}, logical = Logical.OR)  // 满足任一即可
 ```
 
-校验逻辑：
-- 从当前登录用户的 `permissions` 集合中检查是否包含所需权限
-- admin角色拥有 `*:*:*` 通配权限，跳过所有校验
-- 不具备权限 → 返回 `403 没有权限访问此资源`
+admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
 
 #### 3.3.4 配置类汇总
 
@@ -275,79 +229,838 @@ List<SysRole> selectRolesByUserId(Long userId);
 
 ---
 
-### 3.4 synthrasim-admin（启动模块）
+### 3.4 synthrasim-admin（启动模块）— API接口完整清单
 
 **职责：** Controller层 + Application入口 + 配置文件。最终打包为可执行JAR。
 
-#### API接口清单
+---
 
-##### 用户认证（无需Token）
+#### 3.4.1 用户认证（无需Token）
 
-| 方法 | 路径 | 说明 | 请求体 |
-|------|------|------|--------|
-| POST | `/login` | 用户登录 | `{"username":"admin","password":"admin123"}` |
-| POST | `/register` | 用户注册 | `{"username":"test","password":"123456","realName":"测试"}` |
-| GET | `/captchaImage` | 获取验证码 | 无 |
-| POST | `/logout` | 退出登录 | 无（Header中带Token） |
+##### POST /login — 用户登录
 
-##### 个人中心（需Token）
+| 项 | 内容 |
+|----|------|
+| 认证 | **不需要Token** |
+| 请求体 | `application/json` |
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/getInfo` | 获取当前用户信息+角色+权限 |
-| GET | `/system/user/profile` | 获取个人资料详情 |
-| PUT | `/system/user/profile` | 修改个人资料（邮箱/手机/办公电话/工作地） |
-| PUT | `/system/user/profile/updatePwd` | 修改密码 |
-| PUT | `/system/user/profile/avatar` | 修改头像 |
+```json
+{
+  "username": "admin",
+  "password": "admin123",
+  "code": "",
+  "uuid": ""
+}
+```
 
-##### 用户管理（需Token + 权限）
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | String | 是 | 用户名（支持用户名/手机号/邮箱） |
+| password | String | 是 | 密码（明文，后端BCrypt比对） |
+| code | String | 否 | 验证码（留空跳过验证码校验） |
+| uuid | String | 否 | 验证码标识（与code配对使用，留空跳过） |
 
-| 方法 | 路径 | 所需权限 | 说明 |
-|------|------|----------|------|
-| GET | `/system/user/list` | system:user:list | 用户列表（分页） |
-| GET | `/system/user/{userId}` | system:user:query | 用户详情 |
-| POST | `/system/user` | system:user:add | 新增用户 |
-| PUT | `/system/user` | system:user:edit | 修改用户 |
-| DELETE | `/system/user/{userIds}` | system:user:remove | 删除用户 |
-| PUT | `/system/user/resetPwd` | system:user:resetPwd | 重置密码 |
-| PUT | `/system/user/authRole` | system:user:edit | 分配角色 |
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "登录成功",
+  "token": "eyJhbGciOiJIUzUxMiJ9..."
+}
+```
 
-##### 角色管理（需Token + 权限）
+**失败响应：**
+```json
+{ "code": 500, "msg": "用户名或密码错误" }
+```
 
-| 方法 | 路径 | 所需权限 | 说明 |
-|------|------|----------|------|
-| GET | `/system/role/list` | system:role:list | 角色列表（分页） |
-| GET | `/system/role/all` | 无 | 查询所有角色 |
-| GET | `/system/role/{roleId}` | system:role:query | 角色详情 |
-| POST | `/system/role` | system:role:add | 新增角色 |
-| PUT | `/system/role` | system:role:edit | 修改角色 |
-| DELETE | `/system/role/{roleIds}` | system:role:remove | 删除角色 |
+**副作用：** 写入 `sys_login_log` 表（成功和失败都记录，operationType=1）。
 
-##### 登录日志
+---
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/system/loginLog/list` | 查询当前用户登录日志（分页） |
+##### POST /register — 用户注册
 
-##### 代码生成
+| 项 | 内容 |
+|----|------|
+| 认证 | **不需要Token** |
+| 请求体 | `application/json` |
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/tool/gen/db/list` | 查询数据库所有表 |
-| GET | `/tool/gen/column/{tableName}` | 查询表字段信息 |
-| GET | `/tool/gen/preview/{tableName}` | 预览生成代码 |
-| GET | `/tool/gen/download/{tableName}` | 下载生成代码ZIP |
+```json
+{
+  "username": "newuser",
+  "password": "123456",
+  "realName": "张三",
+  "email": "zhangsan@example.com",
+  "phone": "13900001111",
+  "code": "",
+  "uuid": ""
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | String | 是 | 用户名（唯一，不可与已有用户重复） |
+| password | String | 是 | 密码（明文，后端BCrypt加密存储） |
+| realName | String | 否 | 真实姓名 |
+| email | String | 否 | 邮箱 |
+| phone | String | 否 | 手机号 |
+| code | String | 否 | 验证码（留空跳过） |
+| uuid | String | 否 | 验证码标识（留空跳过） |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "注册成功" }
+```
+
+---
+
+##### GET /captchaImage — 获取验证码
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **不需要Token** |
+| 请求参数 | 无 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "uuid": "a1b2c3d4e5f6...",
+  "img": "/9j/4AAQSkZJRg..."
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| uuid | 验证码唯一标识，登录时原样回传 |
+| img | 验证码图片的Base64编码，前端用 `<img src="data:image/jpg;base64,${img}">` 展示 |
+
+---
+
+##### POST /logout — 退出登录
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token**（Header中携带） |
+| 请求体 | 无 |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "退出成功" }
+```
+
+**副作用：** 写入 `sys_login_log` 表（operationType=2），删除Redis中的Token缓存。
+
+---
+
+##### GET /getInfo — 获取当前登录用户信息
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 请求参数 | 无 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "realName": "超级管理员",
+    "avatar": null,
+    "email": "admin@synthrasim.com",
+    "phone": "13800000000",
+    "officePhone": null,
+    "workLocation": null,
+    "orgId": 1,
+    "status": 1
+  },
+  "roles": ["admin"],
+  "permissions": ["*:*:*"]
+}
+```
+
+---
+
+#### 3.4.2 个人中心（需Token）
+
+##### GET /system/user/profile — 获取个人资料
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 请求参数 | 无 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "realName": "超级管理员",
+    "email": "admin@synthrasim.com",
+    "phone": "13800000000",
+    "officePhone": null,
+    "workLocation": null,
+    "orgId": 1,
+    "status": 1
+  }
+}
+```
+
+---
+
+##### PUT /system/user/profile — 修改个人资料
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 请求体 | `application/json` |
+
+```json
+{
+  "email": "newemail@example.com",
+  "phone": "13900009999",
+  "officePhone": "010-12345678",
+  "workLocation": "北京市海淀区"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| email | String | 否 | 电子邮箱（校验唯一性） |
+| phone | String | 否 | 手机号码（校验唯一性） |
+| officePhone | String | 否 | 办公电话 |
+| workLocation | String | 否 | 工作地 |
+
+> 注意：姓名(realName)、用户名(username)、组织机构(orgId) 为只读字段，即使传了也不会更新。
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "修改成功" }
+```
+
+---
+
+##### PUT /system/user/profile/updatePwd — 修改密码
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 请求参数 | Query参数（拼在URL上） |
+
+```
+PUT /system/user/profile/updatePwd?oldPassword=admin123&newPassword=newpass456
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| oldPassword | String | 是 | 旧密码（用于校验身份） |
+| newPassword | String | 是 | 新密码（不能与旧密码相同） |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "修改成功" }
+```
+
+**失败响应：**
+```json
+{ "code": 500, "msg": "修改密码失败，旧密码错误" }
+{ "code": 500, "msg": "新密码不能与旧密码相同" }
+```
+
+---
+
+##### PUT /system/user/profile/avatar — 修改头像
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 请求参数 | Query参数 |
+
+```
+PUT /system/user/profile/avatar?avatar=https://example.com/avatar/user1.jpg
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| avatar | String | 是 | 头像URL地址 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "修改成功",
+  "imgUrl": "https://example.com/avatar/user1.jpg"
+}
+```
+
+---
+
+#### 3.4.3 用户管理（需Token + 权限）
+
+##### GET /system/user/list — 查询用户列表（分页）
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:list` |
+| 请求参数 | Query参数 |
+
+```
+GET /system/user/list?pageNum=1&pageSize=10&username=zhang&realName=张&status=1
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| pageNum | Integer | 否 | 1 | 页码 |
+| pageSize | Integer | 否 | 10 | 每页条数 |
+| username | String | 否 | null | 用户名（模糊查询） |
+| realName | String | 否 | null | 姓名（模糊查询） |
+| status | Integer | 否 | null | 状态筛选：0=禁用，1=启用 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "total": 2,
+  "rows": [
+    {
+      "id": 1,
+      "username": "admin",
+      "realName": "超级管理员",
+      "email": "admin@synthrasim.com",
+      "phone": "13800000000",
+      "orgId": 1,
+      "status": 1,
+      "createTime": "2026-03-09 10:00:00"
+    }
+  ]
+}
+```
+
+---
+
+##### GET /system/user/{userId} — 查询用户详情
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:query` |
+| 路径参数 | `userId` — 用户ID |
+
+```
+GET /system/user/1
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "realName": "超级管理员",
+    "email": "admin@synthrasim.com",
+    "roles": [
+      { "id": 1, "roleName": "超级管理员", "roleCode": "admin" }
+    ]
+  }
+}
+```
+
+---
+
+##### POST /system/user — 新增用户
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:add` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "username": "lisi",
+  "password": "123456",
+  "realName": "李四",
+  "email": "lisi@example.com",
+  "phone": "13700001234",
+  "officePhone": "010-87654321",
+  "workLocation": "上海市浦东新区",
+  "orgId": 2,
+  "status": 1
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | String | 是 | 用户名（唯一） |
+| password | String | 是 | 密码（明文，后端加密存储） |
+| realName | String | 否 | 真实姓名 |
+| email | String | 否 | 电子邮箱 |
+| phone | String | 否 | 手机号码 |
+| officePhone | String | 否 | 办公电话 |
+| workLocation | String | 否 | 工作地 |
+| orgId | Long | 否 | 所属组织机构ID |
+| status | Integer | 否 | 账号状态：0=禁用，1=启用（默认1） |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### PUT /system/user — 修改用户
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:edit` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "id": 2,
+  "realName": "张三丰",
+  "email": "zsf@example.com",
+  "phone": "13800005555",
+  "officePhone": "021-11112222",
+  "workLocation": "深圳市南山区",
+  "orgId": 3,
+  "status": 1
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 用户ID（指定要修改哪个用户） |
+| realName | String | 否 | 真实姓名 |
+| email | String | 否 | 电子邮箱（校验唯一） |
+| phone | String | 否 | 手机号码（校验唯一） |
+| officePhone | String | 否 | 办公电话 |
+| workLocation | String | 否 | 工作地 |
+| orgId | Long | 否 | 组织机构ID |
+| status | Integer | 否 | 状态 |
+
+> 注意：password字段即使传入也会被后端忽略（置null），修改密码请用专用接口。
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### DELETE /system/user/{userIds} — 删除用户
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:remove` |
+| 路径参数 | `userIds` — 用户ID（支持多个，逗号分隔） |
+
+```
+DELETE /system/user/3
+DELETE /system/user/3,4,5
+```
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+> 逻辑删除：将 `is_deleted` 标记为1，不物理删除数据。
+
+---
+
+##### PUT /system/user/resetPwd — 重置用户密码
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:resetPwd` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "id": 2,
+  "password": "newpass123"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 用户ID |
+| password | String | 是 | 新密码（明文，后端加密存储） |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### PUT /system/user/authRole — 给用户分配角色
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:user:edit` |
+| 请求参数 | Query参数 |
+
+```
+PUT /system/user/authRole?userId=2&roleIds=1,2
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| userId | Long | 是 | 用户ID |
+| roleIds | Long[] | 是 | 角色ID数组（会先清除用户旧角色再重新分配） |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+#### 3.4.4 角色管理（需Token + 权限）
+
+##### GET /system/role/list — 查询角色列表（分页）
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:role:list` |
+| 请求参数 | Query参数 |
+
+```
+GET /system/role/list?pageNum=1&pageSize=10
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| pageNum | Integer | 否 | 1 | 页码 |
+| pageSize | Integer | 否 | 10 | 每页条数 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "total": 2,
+  "rows": [
+    { "id": 1, "roleName": "超级管理员", "roleCode": "admin", "description": "拥有系统所有权限", "status": 1 },
+    { "id": 2, "roleName": "普通用户", "roleCode": "user", "description": "普通用户角色", "status": 1 }
+  ]
+}
+```
+
+---
+
+##### GET /system/role/all — 查询所有角色（不分页）
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | 无 |
+| 请求参数 | 无 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    { "id": 1, "roleName": "超级管理员", "roleCode": "admin" },
+    { "id": 2, "roleName": "普通用户", "roleCode": "user" }
+  ]
+}
+```
+
+---
+
+##### GET /system/role/{roleId} — 查询角色详情
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:role:query` |
+| 路径参数 | `roleId` — 角色ID |
+
+```
+GET /system/role/1
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": { "id": 1, "roleName": "超级管理员", "roleCode": "admin", "description": "拥有系统所有权限", "status": 1 }
+}
+```
+
+---
+
+##### POST /system/role — 新增角色
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:role:add` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "roleName": "项目经理",
+  "roleCode": "pm",
+  "description": "项目管理角色，可创建和管理项目",
+  "status": 1
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roleName | String | 是 | 角色名称 |
+| roleCode | String | 是 | 角色编码（唯一，程序内部使用） |
+| description | String | 否 | 角色描述 |
+| status | Integer | 否 | 状态：0=禁用，1=启用（默认1） |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### PUT /system/role — 修改角色
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:role:edit` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "id": 2,
+  "roleName": "高级用户",
+  "roleCode": "user",
+  "description": "高级用户角色，具备扩展操作权限",
+  "status": 1
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 角色ID |
+| roleName | String | 否 | 角色名称 |
+| roleCode | String | 否 | 角色编码 |
+| description | String | 否 | 角色描述 |
+| status | Integer | 否 | 状态 |
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### DELETE /system/role/{roleIds} — 删除角色
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:role:remove` |
+| 路径参数 | `roleIds` — 角色ID（支持多个，逗号分隔） |
+
+```
+DELETE /system/role/3
+DELETE /system/role/3,4
+```
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+#### 3.4.5 登录日志（需Token）
+
+##### GET /system/loginLog/list — 查询登录日志（分页）
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | 无（只能查自己的日志） |
+| 请求参数 | Query参数 |
+
+```
+GET /system/loginLog/list?pageNum=1&pageSize=10
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| pageNum | Integer | 否 | 1 | 页码 |
+| pageSize | Integer | 否 | 10 | 每页条数 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "total": 5,
+  "rows": [
+    {
+      "id": 1,
+      "userId": 1,
+      "username": "admin",
+      "operationType": 1,
+      "ipAddress": "127.0.0.1",
+      "userAgent": "Mozilla/5.0...",
+      "loginStatus": 1,
+      "failReason": null,
+      "operationTime": "2026-03-09 15:30:00"
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "username": "admin",
+      "operationType": 2,
+      "ipAddress": "127.0.0.1",
+      "loginStatus": 1,
+      "failReason": null,
+      "operationTime": "2026-03-09 17:00:00"
+    }
+  ]
+}
+```
+
+| operationType值 | 含义 |
+|-----------------|------|
+| 1 | 登录 |
+| 2 | 注销登录 |
+
+| loginStatus值 | 含义 |
+|---------------|------|
+| 0 | 失败 |
+| 1 | 成功 |
+
+---
+
+#### 3.4.6 代码生成（需Token）
+
+##### GET /tool/gen/db/list — 查询数据库所有表
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 请求参数 | 无 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    { "tableName": "sys_user", "tableComment": "用户基本信息表", "createTime": "2026-03-09 10:00:00" },
+    { "tableName": "biz_project", "tableComment": "项目表", "createTime": "2026-03-09 10:00:00" }
+  ]
+}
+```
+
+---
+
+##### GET /tool/gen/column/{tableName} — 查询表字段信息
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 路径参数 | `tableName` — 数据库表名 |
+
+```
+GET /tool/gen/column/biz_project
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    { "columnName": "id", "columnComment": "主键ID", "columnType": "bigint", "javaType": "Long", "javaField": "id", "isPk": "1", "isIncrement": "1" },
+    { "columnName": "project_name", "columnComment": "项目名称", "columnType": "varchar(128)", "javaType": "String", "javaField": "projectName", "isPk": "0" }
+  ]
+}
+```
+
+---
+
+##### GET /tool/gen/preview/{tableName} — 预览生成代码
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 路径参数 | `tableName` — 数据库表名 |
+
+```
+GET /tool/gen/preview/biz_project
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "templates/vm/java/domain.java.vm": "package com.synthrasim.system.domain;\n\nimport ...",
+    "templates/vm/java/mapper.java.vm": "package com.synthrasim.system.mapper;\n\n...",
+    "templates/vm/java/service.java.vm": "...",
+    "templates/vm/java/serviceImpl.java.vm": "...",
+    "templates/vm/java/controller.java.vm": "...",
+    "templates/vm/xml/mapper.xml.vm": "..."
+  }
+}
+```
+
+---
+
+##### GET /tool/gen/download/{tableName} — 下载生成代码ZIP
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 路径参数 | `tableName` — 数据库表名 |
+| 请求参数 | Query参数（均可选） |
+
+```
+GET /tool/gen/download/biz_project?packageName=com.synthrasim.system&moduleName=system&author=张三
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| packageName | String | 否 | com.synthrasim.system | 生成代码的包路径 |
+| moduleName | String | 否 | system | 模块名（影响Controller的URL前缀） |
+| author | String | 否 | SynthraSim | 作者名（写入代码注释） |
+
+**响应：** 直接返回ZIP文件流（浏览器自动下载 `biz_project_code.zip`）。
 
 ---
 
 ### 3.5 synthrasim-generator（代码生成模块）
 
 **职责：** 读取数据库表结构，通过Velocity模板自动生成CRUD代码。
-
-**生成流程：**
-```
-数据库表 → 读取information_schema → 构建GenTable对象 → Velocity模板渲染 → 生成代码文件
-```
 
 **为每张表自动生成6个文件：**
 
@@ -360,104 +1073,52 @@ List<SysRole> selectRolesByUserId(Long userId);
 | controller.java.vm | Controller | `ProjectController.java` |
 | mapper.xml.vm | MyBatis XML | `ProjectMapper.xml` |
 
-**使用方法：**
-1. 访问 `GET /tool/gen/db/list` 查看所有数据库表
-2. 访问 `GET /tool/gen/preview/biz_project` 预览生成的代码
-3. 访问 `GET /tool/gen/download/biz_project` 下载ZIP压缩包
-4. 解压后将代码复制到对应模块中
-
 ---
 
 ## 4. Knife4j 接口文档使用指南
 
 ### 4.1 访问地址
 
-启动项目后浏览器打开：**http://localhost:8080/doc.html**
+http://localhost:8080/doc.html
 
-### 4.2 页面布局
+### 4.2 测试步骤
 
-```
-┌──────────────────────────────────────────────────────┐
-│  Authorize按钮                               搜索     │
-├──────────────┬───────────────────────────────────────┤
-│              │                                       │
-│  左侧菜单     │         右侧接口详情                    │
-│              │                                       │
-│  ▸ 用户认证   │   接口地址、请求方式、参数说明             │
-│    · 用户登录  │                                       │
-│    · 用户注册  │   请求示例：                            │
-│    · 获取信息  │   {                                   │
-│              │     "username": "admin",               │
-│  ▸ 个人中心   │     "password": "admin123"             │
-│  ▸ 用户管理   │   }                                   │
-│  ▸ 角色管理   │                                       │
-│  ▸ 登录日志   │   [发送] 按钮                           │
-│  ▸ 代码生成   │                                       │
-│              │   响应结果：                             │
-│              │   { "code": 200, "token": "xxx" }     │
-│              │                                       │
-└──────────────┴───────────────────────────────────────┘
-```
+#### 第一步：登录获取Token
 
-### 4.3 测试接口的完整步骤
+左侧菜单 →「用户认证」→「用户登录」→ 填写请求体 → 点击「发送」：
 
-#### 第一步：测试无需Token的接口（登录/注册）
-
-**登录和注册不需要填写任何请求头**，直接在请求体中填写参数即可。
-
-1. 左侧菜单展开 **「用户认证」** → 点击 **「用户登录」**
-2. 在右侧的请求参数区域，填写JSON：
 ```json
 {
   "username": "admin",
   "password": "admin123"
 }
 ```
-> **注意：** `code` 和 `uuid` 字段是验证码相关的，当前验证码校验是**可选的**（code和uuid为空时会跳过校验），所以直接登录时**不需要填这两个字段**。
 
-3. 点击 **「发送」** 按钮
-4. 响应结果中会返回 `token` 值：
-```json
-{
-  "code": 200,
-  "msg": "登录成功",
-  "token": "eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2tleS..."
-}
+> code 和 uuid 留空即可跳过验证码。
+
+复制响应中的 `token` 值。
+
+#### 第二步：设置全局Token
+
+点击页面顶部 **「Authorize」** 按钮 → 输入框填入：
+
 ```
-5. **复制这个token值**，下一步要用
-
-#### 第二步：设置全局Token（解锁所有需认证的接口）
-
-1. 点击页面顶部的 **「Authorize」** 按钮（或页面右上角的锁图标）
-2. 在弹出的输入框中填入：
+Bearer eyJhbGciOiJIUzUxMiJ9.xxxxx
 ```
-Bearer eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2tleS...
-```
-> **格式必须是：** `Bearer` + 空格 + token值（Bearer是固定前缀）
 
-3. 点击 **「确认」/「Authorize」**
-4. 此后文档中所有接口请求都会自动携带这个Token
+> 格式：`Bearer` + 空格 + token（Bearer是固定前缀，必须带）
 
-#### 第三步：测试需要Token的接口
+点击确认，之后所有接口自动携带此Token。
 
-设置全局Token后，可以直接测试其他接口：
-- 点击 **「个人中心」→「获取个人信息」→「发送」**，将返回当前登录用户资料
-- 点击 **「用户管理」→「查询用户列表」→「发送」**，将返回用户分页数据
+#### 第三步：调用任意接口
 
-### 4.4 常见问题
+设置Token后，所有需要认证的接口都可以直接测试。
 
-| 现象 | 原因 | 解决方法 |
-|------|------|----------|
-| 返回 `{"code":401,"msg":"认证失败，请重新登录"}` | 没有设置Token / Token过期 | 重新登录获取新Token，在Authorize中填入 |
-| 返回 `{"code":403,"msg":"没有权限访问此资源"}` | 当前用户没有该接口所需的权限 | 用admin账号登录（admin拥有所有权限） |
-| 返回 `{"code":500,"msg":"系统内部错误"}` | 后端抛出异常 | 查看IDEA控制台的错误日志 |
-| 登录时返回 `"验证码已失效"` | 填了code/uuid但Redis中验证码已过期 | code和uuid两个字段**留空不填**即可跳过验证码 |
-
-### 4.5 默认账号
+### 4.3 默认账号
 
 | 账号 | 密码 | 角色 | 权限 |
 |------|------|------|------|
-| admin | admin123 | 超级管理员(admin) | 所有权限（`*:*:*`） |
+| admin | admin123 | 超级管理员(admin) | 所有权限 `*:*:*` |
 | zhangsan | admin123 | 普通用户(user) | 基本权限 |
 
 ---
@@ -466,48 +1127,19 @@ Bearer eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2tleS...
 
 主配置文件：`synthrasim-admin/src/main/resources/application.yml`
 
-### 5.1 数据源
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://127.0.0.1:8086/synthrasim_server?...
-    username: root
-    password: PSX18322002993
-```
-
-### 5.2 Redis
-
-```yaml
-spring:
-  redis:
-    host: 127.0.0.1
-    port: 6379
-    password:          # 无密码留空
-    database: 0
-```
-
-### 5.3 Token
-
-```yaml
-token:
-  secret: synthrasimSecretKey2026ForIndustrialSimulation  # JWT签名密钥
-  expireTime: 720                                         # Token有效期（分钟）=12小时
-```
-
-### 5.4 MyBatis Plus
-
-```yaml
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true    # 下划线 → 驼峰自动映射
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 控制台打印SQL
-  global-config:
-    db-config:
-      logic-delete-field: isDeleted       # 逻辑删除字段
-      logic-delete-value: 1               # 已删除标记值
-      logic-not-delete-value: 0           # 未删除标记值
-```
+| 配置项 | 值 | 说明 |
+|--------|-----|------|
+| `server.port` | 8080 | 服务端口 |
+| `spring.datasource.url` | jdbc:mysql://127.0.0.1:8086/synthrasim_server | 数据库地址 |
+| `spring.datasource.username` | root | 数据库用户名 |
+| `spring.datasource.password` | PSX18322002993 | 数据库密码 |
+| `spring.redis.host` | 127.0.0.1 | Redis地址 |
+| `spring.redis.port` | 6379 | Redis端口 |
+| `spring.mvc.pathmatch.matching-strategy` | ant_path_matcher | MVC路径匹配策略（Knife4j需要） |
+| `token.secret` | synthrasimSecretKey2026... | JWT签名密钥 |
+| `token.expireTime` | 720 | Token有效期（分钟）=12小时 |
+| `mybatis-plus.configuration.log-impl` | StdOutImpl | 控制台打印SQL（生产环境建议关闭） |
+| `knife4j.enable` | true | 启用Knife4j接口文档 |
 
 ---
 
@@ -524,48 +1156,17 @@ mybatis-plus:
 4. 将生成的文件放入 `synthrasim-system` 对应目录
 
 **方法二：手动创建**
-1. 在 `system/domain/` 下创建 `BizProject.java`（继承BaseEntity，加@TableName注解）
-2. 在 `system/mapper/` 下创建 `BizProjectMapper.java`（继承BaseMapper）
-3. 在 `system/service/` 下创建 `IBizProjectService.java`（继承IService）
-4. 在 `system/service/impl/` 下创建 `BizProjectServiceImpl.java`（继承ServiceImpl）
-5. 在 `admin/.../controller/` 下创建 `BizProjectController.java`
+1. `system/domain/` → `BizProject.java`（继承BaseEntity，加@TableName注解）
+2. `system/mapper/` → `BizProjectMapper.java`（继承BaseMapper）
+3. `system/service/` → `IBizProjectService.java`（继承IService）
+4. `system/service/impl/` → `BizProjectServiceImpl.java`（继承ServiceImpl）
+5. `admin/controller/` → `BizProjectController.java`
 
 ### 6.2 接口返回规范
 
 ```java
-// 成功
 return AjaxResult.success();                    // {"code":200,"msg":"操作成功"}
 return AjaxResult.success(data);                // {"code":200,"msg":"操作成功","data":{...}}
-return AjaxResult.success("自定义消息", data);    // {"code":200,"msg":"自定义消息","data":{...}}
-
-// 失败
 return AjaxResult.error("错误描述");              // {"code":500,"msg":"错误描述"}
-return AjaxResult.error(401, "未认证");           // {"code":401,"msg":"未认证"}
-
-// 分页
 return new TableDataInfo(list, total);           // {"code":200,"rows":[...],"total":100}
 ```
-
-### 6.3 权限注解使用
-
-```java
-@RequiresPermissions("system:user:list")                                    // 单个权限
-@RequiresPermissions(value = {"system:user:add", "system:user:edit"}, logical = Logical.OR)  // 任一即可
-```
-
----
-
-## 7. 数据库初始化
-
-执行 `sql/init.sql` 脚本：
-
-```bash
-mysql -h 127.0.0.1 -P 8086 -u root -pPSX18322002993 < sql/init.sql
-```
-
-脚本内容：
-- 创建 `synthrasim_server` 数据库
-- 创建系统表（sys_user、sys_role、sys_user_role、sys_organization、sys_login_log、sys_help_doc）
-- 创建项目表（biz_project）
-- 创建代码生成辅助表（gen_table、gen_table_column）
-- 插入初始数据（组织机构、角色、管理员账号）
