@@ -133,12 +133,18 @@ public class SysProfileController {
      * 修改密码
      *
      * 对应用户头像下拉菜单中的"修改密码"功能
+     *
+     * 注意：密码字段在SysUser上标注了@JsonIgnore，不会序列化到Redis中，
+     * 所以不能从缓存的LoginUser中读取密码，必须从数据库重新查询。
      */
     @ApiOperation("修改密码")
     @PutMapping("/updatePwd")
     public AjaxResult updatePwd(@RequestParam String oldPassword, @RequestParam String newPassword) {
         LoginUser loginUser = tokenService.getLoginUser();
-        String encryptedPassword = loginUser.getUser().getPassword();
+
+        // 从数据库查询当前用户的加密密码（Redis缓存中password为null）
+        SysUser dbUser = userService.selectUserByUsername(loginUser.getUser().getUsername());
+        String encryptedPassword = dbUser.getPassword();
 
         // 校验旧密码是否正确
         if (!SecurityUtils.matchesPassword(oldPassword, encryptedPassword)) {
@@ -150,12 +156,9 @@ public class SysProfileController {
             return AjaxResult.error("新密码不能与旧密码相同");
         }
 
-        // 更新密码
+        // 更新密码到数据库
         String newEncryptedPwd = SecurityUtils.encryptPassword(newPassword);
-        if (userService.resetUserPwd(loginUser.getUsername(), newEncryptedPwd) > 0) {
-            // 更新缓存中的密码
-            loginUser.getUser().setPassword(newEncryptedPwd);
-            tokenService.refreshToken(loginUser);
+        if (userService.resetUserPwd(loginUser.getUser().getUsername(), newEncryptedPwd) > 0) {
             return AjaxResult.success("修改成功");
         }
         return AjaxResult.error("修改密码失败，请联系管理员");
