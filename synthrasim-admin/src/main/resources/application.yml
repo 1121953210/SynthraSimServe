@@ -87,6 +87,8 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
+      # updateById 时只更新非null字段，防止未传入的字段被置空
+      update-strategy: not_null
       # 逻辑删除字段配置
       logic-delete-field: isDeleted
       logic-delete-value: 1

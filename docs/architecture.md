@@ -424,6 +424,8 @@ admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
 
 ```json
 {
+  "username": "admin_new",
+  "realName": "超级管理员改名",
   "email": "newemail@example.com",
   "phone": "13900009999",
   "officePhone": "010-12345678",
@@ -433,12 +435,14 @@ admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
+| username | String | 否 | 用户名 |
+| realName | String | 否 | 真实姓名 |
 | email | String | 否 | 电子邮箱（校验唯一性） |
 | phone | String | 否 | 手机号码（校验唯一性） |
 | officePhone | String | 否 | 办公电话 |
 | workLocation | String | 否 | 工作地 |
 
-> 注意：姓名(realName)、用户名(username)、组织机构(orgId) 为只读字段，即使传了也不会更新。
+> **更新策略：只更新实际传入的非空字段。** 未传入或传空字符串的字段保持数据库原值不变，不会被置空。例如只传 `{"realName":"新名字"}`，则只修改姓名，其他字段原封不动。
 
 **成功响应：**
 ```json
