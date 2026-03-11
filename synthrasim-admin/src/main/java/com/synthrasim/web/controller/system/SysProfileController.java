@@ -13,12 +13,17 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 个人中心控制器
- * 
+ *
  * 对应原型设计中的"用户个人信息"页面，提供：
  * - 查看个人基本信息
  * - 修改个人资料（邮箱、手机号、办公电话、工作地）
  * - 修改密码
  * - 修改头像
+ *
+ * 路径说明：类级别 @RequestMapping("/system/user/profile")
+ * 每个方法必须声明明确的子路径，否则会与 SysUserController 的
+ * @GetMapping("/{userId}") 路径变量产生冲突，导致Spring将 "profile"
+ * 当作 userId 解析并抛出 NumberFormatException。
  */
 @Api(tags = "个人中心")
 @RestController
@@ -35,7 +40,7 @@ public class SysProfileController {
      * 获取个人信息
      */
     @ApiOperation("获取个人信息")
-    @GetMapping
+    @GetMapping("/info")
     public AjaxResult profile() {
         LoginUser loginUser = tokenService.getLoginUser();
         SysUser user = loginUser.getUser();
@@ -45,13 +50,13 @@ public class SysProfileController {
 
     /**
      * 修改个人基本信息
-     * 
+     *
      * 对应原型中基础信息的"保存"按钮。
      * 可修改字段：电子邮箱、手机号码、办公电话、工作地
      * 只读字段（不可修改）：姓名、用户名、组织机构
      */
     @ApiOperation("修改个人信息")
-    @PutMapping
+    @PutMapping("/update")
     public AjaxResult updateProfile(@RequestBody SysUser user) {
         LoginUser loginUser = tokenService.getLoginUser();
         SysUser currentUser = loginUser.getUser();
@@ -87,7 +92,7 @@ public class SysProfileController {
 
     /**
      * 修改密码
-     * 
+     *
      * 对应用户头像下拉菜单中的"修改密码"功能
      */
     @ApiOperation("修改密码")

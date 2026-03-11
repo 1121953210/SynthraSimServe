@@ -387,7 +387,7 @@ admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
 
 #### 3.4.2 个人中心（需Token）
 
-##### GET /system/user/profile — 获取个人资料
+##### GET /system/user/profile/info — 获取个人资料
 
 | 项 | 内容 |
 |----|------|
@@ -415,7 +415,7 @@ admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
 
 ---
 
-##### PUT /system/user/profile — 修改个人资料
+##### PUT /system/user/profile/update — 修改个人资料
 
 | 项 | 内容 |
 |----|------|
