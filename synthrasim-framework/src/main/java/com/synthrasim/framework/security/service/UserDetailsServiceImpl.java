@@ -132,6 +132,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             permissions.addAll(perms);
         }
 
+
         return permissions;
     }
 }
