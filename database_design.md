@@ -26,32 +26,34 @@
 | 2 | sys_organization | 用户管理 | 组织机构表 |
 | 3 | sys_role | 用户管理 | 角色表 |
 | 4 | sys_user_role | 用户管理 | 用户-角色关联表 |
-| 5 | sys_login_log | 用户管理 | 用户登录日志表 |
-| 6 | biz_project | 项目管理 | 项目表 |
-| 7 | biz_model_category | 建模管理 | 模型库浏览器分类表（内置模型分类） |
-| 8 | biz_model_template | 建模管理 | 模型模板表（内置模型定义） |
-| 9 | biz_model_template_param | 建模管理 | 模型模板参数定义表 |
-| 10 | biz_model_template_port | 建模管理 | 模型模板接口定义表 |
-| 11 | biz_user_model | 建模管理 | 用户模型表（画布中的模型实例） |
-| 12 | biz_user_model_param_value | 建模管理 | 用户模型参数值表 |
-| 13 | biz_canvas | 建模管理 | 画布表 |
-| 14 | biz_canvas_component | 建模管理 | 画布组件实例表 |
-| 15 | biz_canvas_connection | 建模管理 | 画布组件连线表 |
-| 16 | biz_simulation_config | 仿真管理 | 仿真配置表 |
-| 17 | biz_simulation_task | 仿真管理 | 仿真任务执行表 |
-| 18 | biz_simulation_log | 仿真管理 | 仿真日志表 |
-| 19 | biz_simulation_result | 仿真管理 | 仿真结果数据表 |
-| 20 | biz_postprocess_chart | 后处理 | 后处理图表配置表 |
-| 21 | biz_postprocess_curve | 后处理 | 后处理曲线数据表 |
-| 22 | biz_model_lib_folder | 模型库管理 | 个人模型库文件夹表（树结构） |
-| 23 | biz_model_lib_file | 模型库管理 | 个人模型库文件表 |
-| 24 | biz_result_set_folder | 仿真结果集 | 仿真结果集文件夹表（树结构） |
-| 25 | biz_result_set_file | 仿真结果集 | 仿真结果集文件表 |
-| 26 | biz_report_folder | 报告库 | 报告库文件夹表（树结构） |
-| 27 | biz_report | 报告库 | 报告表 |
-| 28 | biz_report_template | 报告库 | 报告模板表 |
-| 29 | biz_share_record | 共享管理 | 资源共享记录表 |
-| 30 | sys_help_doc | 系统管理 | 帮助文档表 |
+| 5 | sys_menu | 用户管理 | 菜单/权限表（菜单树 + 权限标识 perms） |
+| 6 | sys_role_menu | 用户管理 | 角色-菜单/权限关联表 |
+| 7 | sys_login_log | 用户管理 | 用户登录日志表 |
+| 8 | biz_project | 项目管理 | 项目表 |
+| 9 | biz_model_category | 建模管理 | 模型库浏览器分类表（内置模型分类） |
+| 10 | biz_model_template | 建模管理 | 模型模板表（内置模型定义） |
+| 11 | biz_model_template_param | 建模管理 | 模型模板参数定义表 |
+| 12 | biz_model_template_port | 建模管理 | 模型模板接口定义表 |
+| 13 | biz_user_model | 建模管理 | 用户模型表（画布中的模型实例） |
+| 14 | biz_user_model_param_value | 建模管理 | 用户模型参数值表 |
+| 15 | biz_canvas | 建模管理 | 画布表 |
+| 16 | biz_canvas_component | 建模管理 | 画布组件实例表 |
+| 17 | biz_canvas_connection | 建模管理 | 画布组件连线表 |
+| 18 | biz_simulation_config | 仿真管理 | 仿真配置表 |
+| 19 | biz_simulation_task | 仿真管理 | 仿真任务执行表 |
+| 20 | biz_simulation_log | 仿真管理 | 仿真日志表 |
+| 21 | biz_simulation_result | 仿真管理 | 仿真结果数据表 |
+| 22 | biz_postprocess_chart | 后处理 | 后处理图表配置表 |
+| 23 | biz_postprocess_curve | 后处理 | 后处理曲线数据表 |
+| 24 | biz_model_lib_folder | 模型库管理 | 个人模型库文件夹表（树结构） |
+| 25 | biz_model_lib_file | 模型库管理 | 个人模型库文件表 |
+| 26 | biz_result_set_folder | 仿真结果集 | 仿真结果集文件夹表（树结构） |
+| 27 | biz_result_set_file | 仿真结果集 | 仿真结果集文件表 |
+| 28 | biz_report_folder | 报告库 | 报告库文件夹表（树结构） |
+| 29 | biz_report | 报告库 | 报告表 |
+| 30 | biz_report_template | 报告库 | 报告模板表 |
+| 31 | biz_share_record | 共享管理 | 资源共享记录表 |
+| 32 | sys_help_doc | 系统管理 | 帮助文档表 |
 
 ---
 
@@ -152,7 +154,57 @@
 | uk_user_role | UNIQUE | user_id, role_id | 用户角色联合唯一索引 |
 | idx_role_id | NORMAL | role_id | 角色查询索引 |
 
-### 2.5 用户登录日志表（sys_login_log）
+### 2.5 菜单/权限表（sys_menu）
+
+存储系统所有菜单和操作权限，包含菜单树结构和权限标识 `perms`，用于 RBAC 权限控制。
+
+> 权限标识命名规范：`{模块}:{业务}:{操作}`，如 `system:user:list`、`system:user:add`。
+
+| 字段名 | 数据类型 | 是否为空 | 默认值 | 说明 |
+|--------|----------|----------|--------|------|
+| id | BIGINT | NOT NULL | AUTO_INCREMENT | 主键ID |
+| menu_name | VARCHAR(128) | NOT NULL | — | 菜单/权限名称（如“用户管理”、“查看用户列表”） |
+| parent_id | BIGINT | NOT NULL | 0 | 父菜单ID，0表示顶级菜单 |
+| sort_order | INT | NOT NULL | 0 | 显示顺序 |
+| path | VARCHAR(255) | NULL | NULL | 前端路由地址（如 `/system/user`） |
+| perms | VARCHAR(128) | NULL | NULL | 权限标识（如 `system:user:list`），按钮/接口权限使用 |
+| menu_type | CHAR(1) | NOT NULL | 'M' | 菜单类型：M=目录，C=菜单，F=按钮/权限点 |
+| visible | TINYINT(1) | NOT NULL | 1 | 菜单是否可见：0=隐藏，1=显示 |
+| status | TINYINT(1) | NOT NULL | 1 | 状态：0=禁用，1=启用 |
+| icon | VARCHAR(64) | NULL | NULL | 菜单图标（前端图标标识） |
+| is_deleted | TINYINT(1) | NOT NULL | 0 | 逻辑删除标志 |
+| create_time | DATETIME | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
+| update_time | DATETIME | NOT NULL | CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
+| create_by | BIGINT | NULL | NULL | 创建人ID |
+| update_by | BIGINT | NULL | NULL | 更新人ID |
+
+**索引设计：**
+
+| 索引名 | 索引类型 | 字段 | 说明 |
+|--------|----------|------|------|
+| idx_parent_id | NORMAL | parent_id | 父菜单查询索引（构建菜单树） |
+| idx_menu_type | NORMAL | menu_type | 按菜单类型过滤（目录/菜单/按钮） |
+| idx_perms | NORMAL | perms | 按权限标识查询（登录加载权限用） |
+
+### 2.6 角色-菜单/权限关联表（sys_role_menu）
+
+角色与菜单/权限的多对多关联表，用于定义每个角色拥有哪些具体操作权限。
+
+| 字段名 | 数据类型 | 是否为空 | 默认值 | 说明 |
+|--------|----------|----------|--------|------|
+| id | BIGINT | NOT NULL | AUTO_INCREMENT | 主键ID |
+| role_id | BIGINT | NOT NULL | — | 角色ID，关联 `sys_role.id` |
+| menu_id | BIGINT | NOT NULL | — | 菜单/权限ID，关联 `sys_menu.id` |
+| create_time | DATETIME | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
+
+**索引设计：**
+
+| 索引名 | 索引类型 | 字段 | 说明 |
+|--------|----------|------|------|
+| uk_role_menu | UNIQUE | role_id, menu_id | 同一角色与同一菜单/权限唯一关联 |
+| idx_menu_id | NORMAL | menu_id | 按菜单/权限查询角色 |
+
+### 2.7 用户登录日志表（sys_login_log）
 
 记录用户的登录/注销操作日志，支持分页查询及按时间倒序展示。
 
@@ -962,6 +1014,14 @@
 | 0 | IN（输入参数） |
 | 1 | OUT（输出参数） |
 
+### 12.14 菜单类型（sys_menu.menu_type）
+
+| 值 | 含义 |
+|----|------|
+| M | 目录（仅用于分组，不直接绑定路由或权限） |
+| C | 菜单（通常对应一个页面路由） |
+| F | 按钮/操作权限（通常对应一个具体接口权限标识 perms） |
+
 ---
 
 ## 13. E-R 关系说明
@@ -972,6 +1032,7 @@
 sys_user (1) ──── (N) biz_project             用户拥有多个项目
 sys_user (1) ──── (N) sys_login_log           用户拥有多条登录日志
 sys_user (N) ──── (N) sys_role                用户与角色多对多（通过 sys_user_role）
+sys_role (N) ──── (N) sys_menu                角色与菜单/权限多对多（通过 sys_role_menu）
 sys_user (N) ──── (1) sys_organization        用户归属组织（多对一）
 
 biz_project (1) ──── (N) biz_user_model        项目包含多个用户模型
@@ -1093,7 +1154,41 @@ CREATE TABLE `sys_user_role` (
   KEY `idx_role_id` (`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户角色关联表';
 
--- 1.5 用户登录日志表
+-- 1.5 菜单/权限表
+CREATE TABLE `sys_menu` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `menu_name` VARCHAR(128) NOT NULL COMMENT '菜单/权限名称',
+  `parent_id` BIGINT NOT NULL DEFAULT 0 COMMENT '父菜单ID，0表示顶级菜单',
+  `sort_order` INT NOT NULL DEFAULT 0 COMMENT '显示顺序',
+  `path` VARCHAR(255) DEFAULT NULL COMMENT '路由地址',
+  `perms` VARCHAR(128) DEFAULT NULL COMMENT '权限标识（如 system:user:list）',
+  `menu_type` CHAR(1) NOT NULL DEFAULT 'M' COMMENT '菜单类型：M=目录，C=菜单，F=按钮',
+  `visible` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '菜单是否可见：0=隐藏，1=显示',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态：0=禁用，1=启用',
+  `icon` VARCHAR(64) DEFAULT NULL COMMENT '菜单图标',
+  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_by` BIGINT DEFAULT NULL COMMENT '创建人ID',
+  `update_by` BIGINT DEFAULT NULL COMMENT '更新人ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_parent_id` (`parent_id`),
+  KEY `idx_menu_type` (`menu_type`),
+  KEY `idx_perms` (`perms`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='菜单/权限表';
+
+-- 1.6 角色-菜单/权限关联表
+CREATE TABLE `sys_role_menu` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `role_id` BIGINT NOT NULL COMMENT '角色ID',
+  `menu_id` BIGINT NOT NULL COMMENT '菜单/权限ID',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_menu` (`role_id`, `menu_id`),
+  KEY `idx_menu_id` (`menu_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='角色-菜单/权限关联表';
+
+-- 1.7 用户登录日志表
 CREATE TABLE `sys_login_log` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
