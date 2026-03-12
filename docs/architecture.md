@@ -136,6 +136,8 @@ redisCache.deleteObject("key");                                 // 删除
 | `SysUser` | sys_user | 用户信息（用户名、密码、姓名、邮箱、手机等） |
 | `SysRole` | sys_role | 角色（admin超级管理员、user普通用户等） |
 | `SysUserRole` | sys_user_role | 用户-角色多对多关联 |
+| `SysMenu` | sys_menu | 菜单/权限（菜单名称、权限标识 perms、菜单类型 M/C/F 等） |
+| `SysRoleMenu` | sys_role_menu | 角色-菜单/权限多对多关联（某角色拥有某权限） |
 | `SysOrganization` | sys_organization | 组织机构树（公司→部门→科室） |
 | `SysLoginLog` | sys_login_log | 登录日志（操作类型、IP、时间等） |
 
@@ -158,6 +160,9 @@ SysUser selectUserByUsername(String username);
 
 // SysRoleMapper - 查询用户拥有的所有角色
 List<SysRole> selectRolesByUserId(Long userId);
+
+// SysMenuMapper - 根据用户ID查询该用户拥有的所有权限标识（用于登录时加载权限）
+List<String> selectPermsByUserId(Long userId);  // 联查 sys_user_role → sys_role_menu → sys_menu.perms
 ```
 
 #### Service层（业务逻辑）
@@ -217,7 +222,33 @@ List<SysRole> selectRolesByUserId(Long userId);
 
 admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
 
-#### 3.3.4 配置类汇总
+#### 3.3.4 权限数据模型（sys_menu / sys_role_menu）
+
+权限数据来自两张表及关联关系：
+
+| 表名 | 说明 |
+|------|------|
+| **sys_menu** | 菜单/权限主表。核心字段：`menu_name`（名称）、`perms`（权限标识，如 `system:user:list`）、`menu_type`（M=目录/C=菜单/F=按钮）、`parent_id`（父菜单）、`path`（前端路由）等。权限校验时主要使用 `menu_type='F'` 的记录及其 `perms` 字段。 |
+| **sys_role_menu** | 角色-菜单多对多中间表。字段：`role_id`、`menu_id`。一条记录表示「某角色拥有某菜单/权限」。 |
+
+**权限查询链路（RBAC）：**
+
+```
+用户ID → sys_user_role（用户拥有哪些角色）
+       → sys_role_menu（这些角色拥有哪些菜单/权限）
+       → sys_menu（取 perms 字段，且 menu_type='F'、status=1）
+       → 得到权限标识集合，如 ["system:user:list", "system:user:add"]
+```
+
+**与登录流程的衔接：**
+
+- 登录时 `UserDetailsServiceImpl.loadUserByUsername()` 会调用 `SysMenuMapper.selectPermsByUserId(userId)`，按上述链路查出当前用户的所有权限标识。
+- 若用户拥有 `admin` 角色，则直接赋予 `*:*:*`，不再查库。
+- 得到的权限集合写入 `LoginUser.setPermissions()`，再经 `TokenService` 存入 Redis；后续请求由 `PermissionAspect` 根据 `@RequiresPermissions` 与 `LoginUser.getPermissions()` 做比对。
+
+**权限标识规范（perms）：** 格式为 `{模块}:{业务}:{操作}`，例如：`system:user:list`、`system:user:add`、`system:role:list`。与 Controller 方法上的 `@RequiresPermissions("system:user:list")` 一一对应。
+
+#### 3.3.5 配置类汇总
 
 | 配置类 | 功能 |
 |--------|------|
@@ -382,6 +413,8 @@ admin角色拥有 `*:*:*` 通配权限，跳过所有校验。
   "permissions": ["*:*:*"]
 }
 ```
+
+> **permissions 来源：** 登录时由 `UserDetailsServiceImpl` 根据用户角色，通过 `sys_user_role` → `sys_role_menu` → `sys_menu.perms` 查询得到；admin 角色固定为 `["*:*:*"]`。
 
 ---
 
