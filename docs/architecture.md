@@ -1095,6 +1095,210 @@ GET /tool/gen/download/biz_project?packageName=com.synthrasim.system&moduleName=
 
 ---
 
+#### 3.4.7 项目管理（需Token + 权限）
+
+> 对应数据库表：`biz_project`（见 `database_design.md` 3.1 项目表）。  
+> 封面图上传后返回相对路径，前端将该路径写入 `coverImage` 字段。
+
+##### GET /system/project/list — 查询项目列表（分页）
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:project:list` |
+| 请求参数 | Query参数 |
+
+```
+GET /system/project/list?pageNum=1&pageSize=10&projectName=电池&status=1
+```
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| pageNum | Integer | 否 | 1 | 页码 |
+| pageSize | Integer | 否 | 10 | 每页条数 |
+| projectName | String | 否 | null | 项目名称（模糊查询） |
+| status | Integer | 否 | null | 项目状态：0=已完成，1=进行中 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "total": 2,
+  "rows": [
+    {
+      "id": 1,
+      "projectName": "电池热管理仿真项目",
+      "description": "用于验证热仿真方案",
+      "coverImage": "/uploads/project/cover1.jpg",
+      "status": 1,
+      "ownerId": 1,
+      "lastAccessTime": "2026-03-10 09:00:00",
+      "createTime": "2026-03-09 10:00:00",
+      "updateTime": "2026-03-10 09:00:00"
+    }
+  ]
+}
+```
+
+---
+
+##### GET /system/project/{projectId} — 查询项目详情
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:project:query` |
+| 路径参数 | `projectId` — 项目ID |
+
+```
+GET /system/project/1
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "id": 1,
+    "projectName": "电池热管理仿真项目",
+    "description": "用于验证热仿真方案",
+    "coverImage": "/uploads/project/cover1.jpg",
+    "status": 1,
+    "ownerId": 1,
+    "lastAccessTime": "2026-03-10 09:00:00",
+    "createTime": "2026-03-09 10:00:00",
+    "updateTime": "2026-03-10 09:00:00"
+  }
+}
+```
+
+---
+
+##### POST /system/project — 新增项目
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:project:add` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "projectName": "电池包热管理项目",
+  "description": "三维模型 + 热管方案对比",
+  "coverImage": "/uploads/project/cover_abc123.jpg",
+  "status": 1
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| projectName | String | 是 | 项目名称 |
+| description | String | 否 | 项目简介 |
+| coverImage | String | 否 | 项目封面图相对路径（由上传接口返回的 `url`） |
+| status | Integer | 否 | 项目状态：0=已完成，1=进行中（默认1） |
+
+> **ownerId 字段由后端自动填充为当前登录用户，不需要前端传。**
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### PUT /system/project — 修改项目
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:project:edit` |
+| 请求体 | `application/json` |
+
+```json
+{
+  "id": 1,
+  "projectName": "电池热管理仿真项目（更新）",
+  "description": "补充了新工况",
+  "coverImage": "/uploads/project/cover_new.jpg",
+  "status": 0
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 项目ID |
+| projectName | String | 否 | 项目名称 |
+| description | String | 否 | 项目简介 |
+| coverImage | String | 否 | 封面图相对路径 |
+| status | Integer | 否 | 项目状态：0=已完成，1=进行中 |
+
+> 接口实现中会忽略前端传入的 `ownerId`，防止项目归属被修改。
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+---
+
+##### DELETE /system/project/{projectIds} — 删除项目
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:project:remove` |
+| 路径参数 | `projectIds` — 项目ID（支持多个，逗号分隔） |
+
+```
+DELETE /system/project/3
+DELETE /system/project/3,4,5
+```
+
+**成功响应：**
+```json
+{ "code": 200, "msg": "操作成功" }
+```
+
+> 删除方式为逻辑删除：将 `is_deleted` 标记为1。
+
+---
+
+##### POST /system/project/uploadCover — 上传项目封面图
+
+| 项 | 内容 |
+|----|------|
+| 认证 | **需要Token** |
+| 权限 | `system:project:edit` |
+| 请求体 | `multipart/form-data`，字段名 `file` |
+
+**请求示例：**
+前端使用表单上传图片文件：
+```http
+POST /system/project/uploadCover
+Content-Type: multipart/form-data
+file: (binary image data)
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "url": "/uploads/project/cover_abc123.jpg"
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| url | 封面图在服务器上的相对路径，后续新增/修改项目时写入 `coverImage` 字段使用。 |
+
+> 访问时由前端拼接后端域名 + `url`，例如 `http://localhost:8080/uploads/project/cover_abc123.jpg`。
+
+---
+
 ### 3.5 synthrasim-generator（代码生成模块）
 
 **职责：** 读取数据库表结构，通过Velocity模板自动生成CRUD代码。
