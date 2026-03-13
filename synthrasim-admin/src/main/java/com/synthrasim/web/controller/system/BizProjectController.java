@@ -7,12 +7,14 @@ import com.synthrasim.common.annotation.Log;
 import com.synthrasim.common.annotation.RequiresPermissions;
 import com.synthrasim.common.core.domain.AjaxResult;
 import com.synthrasim.common.core.page.TableDataInfo;
-import com.synthrasim.common.utils.SecurityUtils;
+import com.synthrasim.framework.security.service.LoginUser;
 import com.synthrasim.system.domain.BizProject;
 import com.synthrasim.system.service.IBizProjectService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -82,8 +84,14 @@ public class BizProjectController {
     @Log(title = "项目管理", businessType = "INSERT")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody BizProject project) {
-        Long userId = SecurityUtils.getUserId();
-        project.setOwnerId(userId);
+        // 从当前认证信息中获取登录用户ID，并设置为项目所有者
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser) {
+            LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+            if (loginUser.getUser() != null) {
+                project.setOwnerId(loginUser.getUser().getId());
+            }
+        }
         project.setId(null);
         return projectService.save(project) ? AjaxResult.success() : AjaxResult.error();
     }
